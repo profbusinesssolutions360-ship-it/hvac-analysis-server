@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: hvac-analysis-server
+    runtime: node
+    buildCommand: apt-get update && apt-get install -y libreoffice python3 python3-pip && pip3 install python-pptx && npm install
+    startCommand: node server.js
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: MAKE_WEBHOOK
+        sync: false
+      - key: GMAIL_USER
+        sync: false
+      - key: GMAIL_APP_PASSWORD
+        sync: false
