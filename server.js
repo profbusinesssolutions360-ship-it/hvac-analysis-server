@@ -91,10 +91,12 @@ app.post('/analyze', async (req, res) => {
       const filename = `${companyName.replace(/[^a-z0-9]/gi, '_')}_Revenue_Report.pptx`;
 
       if (GMAIL_USER && GMAIL_PASS) {
-        const transporter = nodemailer.createTransport({
-          service: 'gmail',
-          auth: { user: GMAIL_USER, pass: GMAIL_PASS }
-        });
+       const transporter = nodemailer.createTransport({
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true,
+  auth: { user: GMAIL_USER, pass: GMAIL_PASS }
+});
 
         await transporter.sendMail({
           from: GMAIL_USER,
