@@ -112,9 +112,7 @@ app.post('/analyze', async (req, res) => {
             content: pptxBuffer
           }]
         });
-        console.log('PPTX emailed to', REPORT_EMAIL);
-      }
-    } catch (pptxErr) {
+  
       console.error('PPTX error:', pptxErr.message);
     } catch (pptxErr) {
       console.error('PPTX error:', pptxErr.message);
