@@ -90,7 +90,7 @@ app.post('/analyze', async (req, res) => {
       pptxBuffer = populatePptx(reportData);
       const filename = `${companyName.replace(/[^a-z0-9]/gi, '_')}_Revenue_Report.pptx`;
 
-      if (GMAIL_USER && GMAIL_PASS) {
+    if (GMAIL_USER && GMAIL_PASS) {
         const transporter = nodemailer.createTransport({
           service: 'gmail',
           auth: { user: GMAIL_USER, pass: GMAIL_PASS }
@@ -114,6 +114,8 @@ app.post('/analyze', async (req, res) => {
         });
         console.log('PPTX emailed to', REPORT_EMAIL);
       }
+    } catch (pptxErr) {
+      console.error('PPTX error:', pptxErr.message);
     } catch (pptxErr) {
       console.error('PPTX error:', pptxErr.message);
     }
