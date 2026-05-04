@@ -13,7 +13,7 @@ const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const MAKE_WEBHOOK = process.env.MAKE_WEBHOOK;
 const GMAIL_USER = process.env.GMAIL_USER;
 const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD;
-const REPORT_RECIPIENT = 'dnegri1@gmail.com';
+const REPORT_RECIPIENT = 'Dave@claritycompassreset.com';
 const TEMPLATE_PATH = path.join(__dirname, 'report_template.pptx');
 
 console.log('GMAIL_USER configured as:', GMAIL_USER);
