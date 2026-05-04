@@ -16,6 +16,8 @@ const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD;
 const REPORT_RECIPIENT = 'dnegri1@gmail.com';
 const TEMPLATE_PATH = path.join(__dirname, 'report_template.pptx');
 
+console.log('GMAIL_USER configured as:', GMAIL_USER);
+
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -98,10 +100,9 @@ app.post('/analyze', async (req, res) => {
       console.error('PPTX error:', pptxErr.message);
     }
 
-    // Email PPTX directly to Dave as attachment
     if (pptxBuffer) {
       try {
-        await transporter.sendMail({
+        const info = await transporter.sendMail({
           from: GMAIL_USER,
           to: REPORT_RECIPIENT,
           subject: `New HVAC Report Ready — ${companyName}`,
@@ -127,13 +128,15 @@ app.post('/analyze', async (req, res) => {
             content: pptxBuffer
           }]
         });
-        console.log('PPTX emailed to Dave successfully');
+        console.log('PPTX emailed successfully');
+        console.log('Message ID:', info.messageId);
+        console.log('Accepted:', JSON.stringify(info.accepted));
+        console.log('Rejected:', JSON.stringify(info.rejected));
       } catch (emailErr) {
         console.error('Email error:', emailErr.message);
       }
     }
 
-    // Send simplified payload to Make.com (no pptxBase64 needed)
     const makePayload = {
       ownerName,
       companyName,
