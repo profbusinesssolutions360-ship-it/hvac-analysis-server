@@ -123,10 +123,10 @@ app.post('/analyze', async (req, res) => {
             <p><strong>Executive Summary:</strong></p>
             <p>${summary}</p>
           `,
-          attachments: [{
-            filename: pptxFilename,
-            content: pptxBuffer
-          }]
+          attachments:// attachments: [{
+//   filename: pptxFilename,
+//   content: pptxBuffer
+// }]
         });
         console.log('PPTX emailed successfully');
         console.log('Message ID:', info.messageId);
