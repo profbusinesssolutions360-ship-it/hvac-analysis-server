@@ -4,6 +4,7 @@ const fetch = require('node-fetch');
 const AdmZip = require('adm-zip');
 const nodemailer = require('nodemailer');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 app.use(cors());
@@ -11,18 +12,15 @@ app.use(express.json({ limit: '10mb' }));
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const MAKE_WEBHOOK = process.env.MAKE_WEBHOOK;
-const GMAIL_USER = process.env.GMAIL_USER;
-const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD;
-const REPORT_RECIPIENT = 'Dave@claritycompassreset.com';
 const TEMPLATE_PATH = path.join(__dirname, 'report_template.pptx');
 
-console.log('GMAIL_USER configured as:', GMAIL_USER);
-
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: GMAIL_USER,
-    pass: GMAIL_APP_PASSWORD
+// Serve generated PPTX files for download
+app.get('/reports/:filename', (req, res) => {
+  const filePath = `/tmp/${req.params.filename}`;
+  if (fs.existsSync(filePath)) {
+    res.download(filePath);
+  } else {
+    res.status(404).send('Report not found or expired.');
   }
 });
 
@@ -90,47 +88,17 @@ app.post('/analyze', async (req, res) => {
       console.log('AI fallback used:', aiErr.message);
     }
 
-    let pptxBuffer = null;
+    let reportUrl = '';
     const pptxFilename = `${companyName.replace(/[^a-z0-9]/gi, '_')}_Revenue_Report.pptx`;
 
     try {
-      pptxBuffer = populatePptx({ ...analysis, companyName, ownerName });
-      console.log('PPTX generated successfully');
+      const pptxBuffer = populatePptx({ ...analysis, companyName, ownerName });
+      const tmpPath = `/tmp/${pptxFilename}`;
+      fs.writeFileSync(tmpPath, pptxBuffer);
+      reportUrl = `https://hvac-analysis-server.onrender.com/reports/${pptxFilename}`;
+      console.log('PPTX saved and available at:', reportUrl);
     } catch (pptxErr) {
       console.error('PPTX error:', pptxErr.message);
-    }
-
-    try {
-      const info = await transporter.sendMail({
-        from: GMAIL_USER,
-        to: REPORT_RECIPIENT,
-        subject: `New HVAC Report Ready — ${companyName}`,
-        html: `
-          <h2>New HVAC Dormant Revenue Report</h2>
-          <p><strong>Owner:</strong> ${ownerName}</p>
-          <p><strong>Company:</strong> ${companyName}</p>
-          <p><strong>Email:</strong> ${ownerEmail}</p>
-          <hr>
-          <p><strong>Total Customers:</strong> ${analysis.totalCustomers}</p>
-          <p><strong>Dormant Customers:</strong> ${analysis.dormantCount}</p>
-          <p><strong>Total Dormant Revenue:</strong> ${analysis.totalDormantRevenue}</p>
-          <p><strong>30% Reactivation Target:</strong> ${analysis.reactivationRevenue}</p>
-          <p><strong>Month 1:</strong> ${analysis.month1Revenue}</p>
-          <p><strong>Month 2:</strong> ${analysis.month2Revenue}</p>
-          <p><strong>Month 3:</strong> ${analysis.month3Revenue}</p>
-          <hr>
-          <p><strong>Executive Summary:</strong></p>
-          <p>${summary}</p>
-          <hr>
-          <p><em>PPTX report generated — attachment delivery coming soon.</em></p>
-        `
-      });
-      console.log('Email sent successfully');
-      console.log('Message ID:', info.messageId);
-      console.log('Accepted:', JSON.stringify(info.accepted));
-      console.log('Rejected:', JSON.stringify(info.rejected));
-    } catch (emailErr) {
-      console.error('Email error:', emailErr.message);
     }
 
     const makePayload = {
@@ -138,6 +106,8 @@ app.post('/analyze', async (req, res) => {
       companyName,
       ownerEmail,
       executiveSummary: summary,
+      reportUrl,
+      pptxFilename,
       totalCustomers: analysis.totalCustomers,
       dormantCount: analysis.dormantCount,
       totalDormantRevenue: analysis.totalDormantRevenue,
