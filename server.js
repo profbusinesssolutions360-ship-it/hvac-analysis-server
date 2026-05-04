@@ -100,41 +100,37 @@ app.post('/analyze', async (req, res) => {
       console.error('PPTX error:', pptxErr.message);
     }
 
-    if (pptxBuffer) {
-      try {
-        const info = await transporter.sendMail({
-          from: GMAIL_USER,
-          to: REPORT_RECIPIENT,
-          subject: `New HVAC Report Ready — ${companyName}`,
-          html: `
-            <h2>New HVAC Dormant Revenue Report</h2>
-            <p><strong>Owner:</strong> ${ownerName}</p>
-            <p><strong>Company:</strong> ${companyName}</p>
-            <p><strong>Email:</strong> ${ownerEmail}</p>
-            <hr>
-            <p><strong>Total Customers:</strong> ${analysis.totalCustomers}</p>
-            <p><strong>Dormant Customers:</strong> ${analysis.dormantCount}</p>
-            <p><strong>Total Dormant Revenue:</strong> ${analysis.totalDormantRevenue}</p>
-            <p><strong>30% Reactivation Target:</strong> ${analysis.reactivationRevenue}</p>
-            <p><strong>Month 1:</strong> ${analysis.month1Revenue}</p>
-            <p><strong>Month 2:</strong> ${analysis.month2Revenue}</p>
-            <p><strong>Month 3:</strong> ${analysis.month3Revenue}</p>
-            <hr>
-            <p><strong>Executive Summary:</strong></p>
-            <p>${summary}</p>
-          `,
-          attachments:// attachments: [{
-//   filename: pptxFilename,
-//   content: pptxBuffer
-// }]
-        });
-        console.log('PPTX emailed successfully');
-        console.log('Message ID:', info.messageId);
-        console.log('Accepted:', JSON.stringify(info.accepted));
-        console.log('Rejected:', JSON.stringify(info.rejected));
-      } catch (emailErr) {
-        console.error('Email error:', emailErr.message);
-      }
+    try {
+      const info = await transporter.sendMail({
+        from: GMAIL_USER,
+        to: REPORT_RECIPIENT,
+        subject: `New HVAC Report Ready — ${companyName}`,
+        html: `
+          <h2>New HVAC Dormant Revenue Report</h2>
+          <p><strong>Owner:</strong> ${ownerName}</p>
+          <p><strong>Company:</strong> ${companyName}</p>
+          <p><strong>Email:</strong> ${ownerEmail}</p>
+          <hr>
+          <p><strong>Total Customers:</strong> ${analysis.totalCustomers}</p>
+          <p><strong>Dormant Customers:</strong> ${analysis.dormantCount}</p>
+          <p><strong>Total Dormant Revenue:</strong> ${analysis.totalDormantRevenue}</p>
+          <p><strong>30% Reactivation Target:</strong> ${analysis.reactivationRevenue}</p>
+          <p><strong>Month 1:</strong> ${analysis.month1Revenue}</p>
+          <p><strong>Month 2:</strong> ${analysis.month2Revenue}</p>
+          <p><strong>Month 3:</strong> ${analysis.month3Revenue}</p>
+          <hr>
+          <p><strong>Executive Summary:</strong></p>
+          <p>${summary}</p>
+          <hr>
+          <p><em>PPTX report generated — attachment delivery coming soon.</em></p>
+        `
+      });
+      console.log('Email sent successfully');
+      console.log('Message ID:', info.messageId);
+      console.log('Accepted:', JSON.stringify(info.accepted));
+      console.log('Rejected:', JSON.stringify(info.rejected));
+    } catch (emailErr) {
+      console.error('Email error:', emailErr.message);
     }
 
     const makePayload = {
