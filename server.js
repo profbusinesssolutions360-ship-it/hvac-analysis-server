@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
 const AdmZip = require('adm-zip');
+const nodemailer = require('nodemailer');
 const path = require('path');
 
 const app = express();
@@ -10,7 +11,18 @@ app.use(express.json({ limit: '10mb' }));
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const MAKE_WEBHOOK = process.env.MAKE_WEBHOOK;
+const GMAIL_USER = process.env.GMAIL_USER;
+const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD;
+const REPORT_RECIPIENT = 'dave@claritycompassreset.com';
 const TEMPLATE_PATH = path.join(__dirname, 'report_template.pptx');
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: GMAIL_USER,
+    pass: GMAIL_APP_PASSWORD
+  }
+});
 
 function populatePptx(data) {
   const zip = new AdmZip(TEMPLATE_PATH);
@@ -76,37 +88,64 @@ app.post('/analyze', async (req, res) => {
       console.log('AI fallback used:', aiErr.message);
     }
 
-    let pptxBase64 = '';
-    let pptxFilename = `${companyName.replace(/[^a-z0-9]/gi, '_')}_Revenue_Report.pptx`;
+    let pptxBuffer = null;
+    const pptxFilename = `${companyName.replace(/[^a-z0-9]/gi, '_')}_Revenue_Report.pptx`;
 
     try {
-      const pptxBuffer = populatePptx({ ...analysis, companyName, ownerName });
-      pptxBase64 = pptxBuffer.toString('base64');
+      pptxBuffer = populatePptx({ ...analysis, companyName, ownerName });
       console.log('PPTX generated successfully');
     } catch (pptxErr) {
       console.error('PPTX error:', pptxErr.message);
     }
 
+    // Email PPTX directly to Dave as attachment
+    if (pptxBuffer) {
+      try {
+        await transporter.sendMail({
+          from: GMAIL_USER,
+          to: REPORT_RECIPIENT,
+          subject: `New HVAC Report Ready — ${companyName}`,
+          html: `
+            <h2>New HVAC Dormant Revenue Report</h2>
+            <p><strong>Owner:</strong> ${ownerName}</p>
+            <p><strong>Company:</strong> ${companyName}</p>
+            <p><strong>Email:</strong> ${ownerEmail}</p>
+            <hr>
+            <p><strong>Total Customers:</strong> ${analysis.totalCustomers}</p>
+            <p><strong>Dormant Customers:</strong> ${analysis.dormantCount}</p>
+            <p><strong>Total Dormant Revenue:</strong> ${analysis.totalDormantRevenue}</p>
+            <p><strong>30% Reactivation Target:</strong> ${analysis.reactivationRevenue}</p>
+            <p><strong>Month 1:</strong> ${analysis.month1Revenue}</p>
+            <p><strong>Month 2:</strong> ${analysis.month2Revenue}</p>
+            <p><strong>Month 3:</strong> ${analysis.month3Revenue}</p>
+            <hr>
+            <p><strong>Executive Summary:</strong></p>
+            <p>${summary}</p>
+          `,
+          attachments: [{
+            filename: pptxFilename,
+            content: pptxBuffer
+          }]
+        });
+        console.log('PPTX emailed to Dave successfully');
+      } catch (emailErr) {
+        console.error('Email error:', emailErr.message);
+      }
+    }
+
+    // Send simplified payload to Make.com (no pptxBase64 needed)
     const makePayload = {
-      ownerName, companyName, ownerEmail,
+      ownerName,
+      companyName,
+      ownerEmail,
       executiveSummary: summary,
-      pptxBase64,
-      pptxFilename,
       totalCustomers: analysis.totalCustomers,
       dormantCount: analysis.dormantCount,
-      atRiskCount: analysis.atRiskCount,
-      activeCount: analysis.activeCount,
       totalDormantRevenue: analysis.totalDormantRevenue,
       reactivationRevenue: analysis.reactivationRevenue,
-      avgTicket: analysis.avgTicket,
-      highPriorityCount: analysis.highPriorityCount,
       month1Revenue: analysis.month1Revenue,
       month2Revenue: analysis.month2Revenue,
-      month3Revenue: analysis.month3Revenue,
-      sunkCostLow: analysis.sunkCostLow,
-      sunkCostHigh: analysis.sunkCostHigh,
-      reportDate: analysis.reportDate,
-      topTargets: JSON.stringify(analysis.topTargets)
+      month3Revenue: analysis.month3Revenue
     };
 
     await fetch(MAKE_WEBHOOK, {
